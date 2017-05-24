@@ -7,6 +7,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import org.formacio.repositori.AgendaService;
+import org.formacio.repositori.GrupoService;
+import org.junit.After;
+import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -24,20 +27,37 @@ public class PracticaSetmana2ApplicationTests {
 	@Autowired
 	private MockMvc mockMvc;
 	
+	
 	@Autowired
 	private AgendaService agenda;
+	
+	@Autowired
+	private GrupoService grupos;
 	
 	/*
 	 * Actualiza el codigo de AgendaServiceController 
 	 * y de AgendaService para que hagan uso de
 	 * los metodos de la clase CrudRepository de JPA Spring,
-	 * de manera que sigan pasando estos casos test.
+	 * de manera que se sigan pasando estos casos test.
 	 * 
 	 * Has de indicar que la clase Persona es una entidad
 	 * de la base de datos e indicar que su primary key 
 	 * es la propiedad clau.
 	 * 
 	 */
+	
+	@Before
+	public void setup_base_datos() throws Exception{
+		agenda.init();
+	}
+	
+	
+	@After
+	public void release_base_datos() throws Exception{
+		agenda.deleteAll();
+		grupos.deleteAll();
+	}
+	
 
 	/**
 	 * Creau un controlador al package org.formacio.mvc que respongui 
@@ -127,18 +147,55 @@ public class PracticaSetmana2ApplicationTests {
 	 * 
 	 */
 	@Test
-	public void test_nou_contacte() throws Exception {
-		// localhots:8080
+	public void test_nou_contacte_grupo_existente() throws Exception {
 		mockMvc.perform(post("/afegir")
 				           .param("id", "jos")
 				           .param("nom", "Josep")
 				           .param("telefon", "971-555326")
+				           .param("grupo", "uno")
 				     )
 				.andExpect(status().isOk());
 		
 		// comprova que s'ha inserit
 		mockMvc.perform(get("/contacte/jos").accept(MediaType.APPLICATION_XML))
-		.andExpect(status().isOk());
+						.andExpect(status().isOk());
+		
+		// aprovecho un el controlador que he creado
+		// /name?id=jos que devuelve el nombre
+		// del contacto
+		mockMvc.perform(get("/name?id=jos"))
+				.andExpect(status().isOk())
+				.andExpect(content().string("Josep"));
+		
+		mockMvc.perform(get("/nombre"))
+				.andExpect(status().isOk())
+				.andExpect(content().string("4"));
+	}
+	
+	@Test
+	public void test_nou_contacte_grupo_nuevo() throws Exception {
+		mockMvc.perform(post("/afegir")
+				           .param("id", "bas")
+				           .param("nom", "Barrabas")
+				           .param("telefon", "971-112233")
+				           .param("grupo", "dos")
+				     )
+				.andExpect(status().isOk());
+		
+		// comprova que s'ha inserit
+		mockMvc.perform(get("/contacte/bas").accept(MediaType.APPLICATION_XML))
+						.andExpect(status().isOk());
+		
+		// aprovecho un el controlador que he creado
+		// /name?id=jos que devuelve el nombre
+		// del contacto
+		mockMvc.perform(get("/name?id=bas"))
+				.andExpect(status().isOk())
+				.andExpect(content().string("Barrabas"));
+		
+		mockMvc.perform(get("/grupo").param("grupo", "dos"))
+				.andExpect(status().isOk())
+				.andExpect(content().string("Barrabas"));		
 	}
 
 
@@ -152,6 +209,7 @@ public class PracticaSetmana2ApplicationTests {
 				           .param("id", "jos")
 				           .param("nom", "Josep")
 				           .param("telefon", "971-555326")
+				           .param("grupo", "uno")
 				     )
 				.andExpect(status().is4xxClientError());
 	}
@@ -165,23 +223,32 @@ public class PracticaSetmana2ApplicationTests {
 
 	@Test
 	public void test_actualizar_contacto() throws Exception {
+				
 		mockMvc.perform(post("/actualizar")
-		           .param("id", "jos")
-		           .param("nom", "Josefa")
-		           .param("telefon", "971-112233")
+		           .param("id", "ant")
+		           .param("nom", "Toni")
+		           .param("telefon", "971-555123")
+		           .param("grupo", "uno")
 		     )
 		.andExpect(status().isOk());
 
 		// comprova que s'ha inserit
-		mockMvc.perform(get("/contacte/jos"))
+		mockMvc.perform(get("/contacte/ant"))
 		.andExpect(status().isOk());
 		
-		mockMvc.perform(get("/name?id=jos"))
-		.andExpect(status().isOk())
-		.andExpect(content().string("Josefa"));
+		// Creo un nuevo controlador /name?id=xx
+		// que devuelva el contacto que busco
+		
+		mockMvc.perform(get("/name?id=ant"))
+				.andExpect(status().isOk())
+				.andExpect(content().string("Toni"));
+		
+		mockMvc.perform(get("/nombre"))
+				.andExpect(status().isOk())
+				.andExpect(content().string("3"));
 	}
 	
-	/*
+	/**
 	 * Crea un nuevo controlador /listado
 	 * que devuelva un String  con los nombres
 	 * de todos los contactos de la base de datos.
@@ -191,7 +258,118 @@ public class PracticaSetmana2ApplicationTests {
 	@Test
 	public void test_listar_personas() throws Exception{
 		mockMvc.perform(get("/listado"))
-		.andExpect(status().isOk())
-		.andExpect(content().string("Antoni Joana Lina Josefa"));
+				.andExpect(status().isOk())
+				.andExpect(content().string("Antoni Joana Lina"));
 	}
+	
+	/**
+	 * Crea un controlador /grupos
+	 * que devuelva un listado con los nombres
+	 * de los grupos 
+	 * 
+	 */
+	
+	@Test
+	public void test_listado_grupos() throws Exception {
+		mockMvc.perform(get("/grupos"))
+				.andExpect(status().isOk())
+				.andExpect(content().string("uno"));
+		
+		/* 
+		 * Añado un nuevo contacto en un nuevo grupo: dos
+		 */
+		mockMvc.perform(post("/afegir")
+		           .param("id", "bas")
+		           .param("nom", "Barrabas")
+		           .param("telefon", "971-112233")
+		           .param("grupo", "dos")
+		     )
+		.andExpect(status().isOk());
+
+		// comprova que s'ha inserit
+		// Este contacto se elimina de la tabla Personas al finalizar
+		// el caso test.
+		mockMvc.perform(get("/contacte/bas").accept(MediaType.APPLICATION_XML))
+						.andExpect(status().isOk());
+		
+		// aprovecho un el controlador que he creado
+		// /name?id=jos que devuelve el nombre
+		// del contacto
+		mockMvc.perform(get("/name?id=bas"))
+				.andExpect(status().isOk())
+				.andExpect(content().string("Barrabas"));
+		
+		mockMvc.perform(get("/grupo").param("grupo", "dos"))
+				.andExpect(status().isOk())
+				.andExpect(content().string("Barrabas"));
+		
+		/* 
+		 * Compruebo que se ha creado el grupo dos
+		 */
+		mockMvc.perform(get("/grupos"))
+			.andExpect(status().isOk())
+			.andExpect(content().string("uno dos"));			
+	}
+	
+	/*
+	 * Crea un controlador /grupo
+	 * que devuelva un String con las personas del grupo "uno"
+	 * 
+	 */
+	
+	@Test
+	public void test_listado_personas_grupo() throws Exception {
+		mockMvc.perform(get("/grupo").param("grupo", "uno"))
+				.andExpect(status().isOk())
+				.andExpect(content().string("Antoni Joana Lina"));
+		/*
+		 * Barrabas no está en la tabla Persona porque al
+		 * finalizar el caso test se elimina.
+		 */
+		mockMvc.perform(get("/grupo").param("grupo", "dos"))
+				.andExpect(status().isOk())
+				.andExpect(content().string(""));
+	}
+	
+	/*
+	 * Cambiar a una persona de grupo (actualizarlo)	 * 
+	 */	
+	
+	@Test
+	public void test_actualizar_contacto_grupo() throws Exception {
+				
+		mockMvc.perform(post("/actualizar")
+		           .param("id", "ant")
+		           .param("nom", "Toni")
+		           .param("telefon", "971-555123")
+		           .param("grupo", "dos")
+		     )
+		.andExpect(status().isOk());
+
+		// comprova que s'ha inserit
+		mockMvc.perform(get("/contacte/ant"))
+				.andExpect(status().isOk());
+		
+		// Creo un nuevo controlador /name?id=xx
+		// que devuelva el contacto que busco
+		
+		mockMvc.perform(get("/name?id=ant"))
+				.andExpect(status().isOk())
+				.andExpect(content().string("Toni"));
+		
+		mockMvc.perform(get("/nombre"))
+				.andExpect(status().isOk())
+				.andExpect(content().string("3"));
+		
+		/*
+		mockMvc.perform(get("/grupo").param("grupo", "uno"))
+				.andExpect(status().isOk())
+				.andExpect(content().string("Joana Lina"));*/
+		
+		mockMvc.perform(get("/grupo").param("grupo", "dos"))
+				.andExpect(status().isOk())
+				.andExpect(content().string("Toni"));		
+	}
+
+	
 }

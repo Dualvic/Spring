@@ -44,4 +44,8 @@ public class AgendaService {
         }
         return String.join(" ", listaPersonas);
     }
+
+	public void deleteAll() {
+    	personaRepository.deleteAll();
+	}
 }
